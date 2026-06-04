@@ -68,13 +68,20 @@ function AssessmentPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 text-white p-10">
+        <div className="fixed top-0 left-0 w-96 h-96 bg-cyan-500/20 blur-[120px] rounded-full"></div>
+
+<div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-500/20 blur-[120px] rounded-full"></div>
       <div className="max-w-6xl mx-auto">
 
         <div className="text-center mb-12">
-          <h1 className="text-6xl font-bold mb-4">
-            HealthTwin AI
-          </h1>
+          <div className="inline-block px-4 py-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 text-sm mb-6">
+  AI-Powered Healthcare Intelligence
+</div>
+
+<h1 className="text-7xl font-black tracking-tight">
+  HealthTwin AI
+</h1>
 
           <p className="text-slate-400 text-xl">
             Your Digital Health Twin powered by Explainable AI
@@ -201,7 +208,7 @@ function AssessmentPage() {
 
               </div>
 
-              <div className="mt-10 bg-slate-950 border border-slate-700 rounded-3xl p-8">
+              <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
 
                 <h2 className="text-3xl font-bold mb-6">
                   AI Recommendations
