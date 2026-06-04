@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 
 function App() {
@@ -15,6 +15,7 @@ function App() {
 
   const [prediction, setPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
 
   const handleChange = (e) => {
     setFormData({
@@ -23,16 +24,34 @@ function App() {
     });
   };
 
+  const loadHistory = async () => {
+    try {
+      const response = await axios.get(
+        "http://127.0.0.1:8001/history"
+      );
+
+      setHistory(response.data.reverse());
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
   const handlePredict = async () => {
     try {
       setLoading(true);
 
       const response = await axios.post(
-        "http://127.0.0.1:8000/predict",
+        "http://127.0.0.1:8001/predict",
         formData
       );
 
       setPrediction(response.data);
+
+      loadHistory();
     } catch (error) {
       console.error(error);
       alert("Prediction failed");
@@ -43,7 +62,8 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
+
         <div className="text-center mb-10">
           <h1 className="text-5xl font-bold">
             Diabetes Risk Predictor
@@ -55,7 +75,9 @@ function App() {
         </div>
 
         <div className="bg-slate-900 rounded-3xl p-8 shadow-2xl">
+
           <div className="grid md:grid-cols-2 gap-4">
+
             {Object.keys(formData).map((key) => (
               <div key={key}>
                 <label className="block mb-2 text-slate-300">
@@ -72,6 +94,7 @@ function App() {
                 />
               </div>
             ))}
+
           </div>
 
           <div className="mt-8 text-center">
@@ -85,7 +108,9 @@ function App() {
 
           {prediction && (
             <div className="mt-10">
+
               <div className="text-center">
+
                 <h2 className="text-4xl font-bold">
                   Prediction: {prediction.prediction}
                 </h2>
@@ -105,6 +130,7 @@ function App() {
                 </p>
 
                 <div className="mt-4 w-full max-w-md mx-auto bg-slate-700 rounded-full h-4 overflow-hidden">
+
                   <div
                     className={`h-4 ${
                       prediction.prediction === 1
@@ -115,26 +141,32 @@ function App() {
                       width: `${prediction.confidence}%`,
                     }}
                   />
+
                 </div>
 
                 <div className="mt-6">
+
                   <a
-                    href="http://127.0.0.1:8000/download-report"
+                    href="http://127.0.0.1:8001/download-report"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-block bg-green-600 hover:bg-green-700 px-8 py-3 rounded-xl font-semibold transition"
                   >
                     📄 Download Report
                   </a>
+
                 </div>
+
               </div>
 
               <div className="mt-12">
+
                 <h3 className="text-2xl font-bold text-center mb-6">
                   Top Risk Factors
                 </h3>
 
                 <div className="grid md:grid-cols-3 gap-4">
+
                   {prediction.top_factors?.map((factor, index) => (
                     <div
                       key={index}
@@ -155,16 +187,60 @@ function App() {
                       <div className="text-3xl font-bold text-red-400 mt-2">
                         {factor.impact}
                       </div>
+
                     </div>
                   ))}
+
                 </div>
+
               </div>
 
               <div className="mt-12 p-4 bg-yellow-500/10 border border-yellow-500 rounded-xl text-yellow-300 text-center">
                 Educational Risk Assessment Tool — Not Medical Advice
               </div>
+
             </div>
           )}
+
+          <div className="mt-12">
+
+            <h2 className="text-3xl font-bold mb-6">
+              Previous Assessments
+            </h2>
+
+            <div className="space-y-4">
+
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-slate-800 border border-slate-700 rounded-xl p-4"
+                >
+
+                  <div className="flex justify-between">
+
+                    <div>
+                      <h3 className="font-bold">
+                        {item.risk}
+                      </h3>
+
+                      <p className="text-slate-400">
+                        Confidence: {item.confidence}%
+                      </p>
+                    </div>
+
+                    <div className="text-slate-500 text-sm">
+                      {item.timestamp}
+                    </div>
+
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+
+          </div>
+
         </div>
       </div>
     </div>

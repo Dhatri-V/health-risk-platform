@@ -3,6 +3,9 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from database import engine, SessionLocal
+from prediction_model import Prediction
+
 import joblib
 import shap
 import numpy as np
@@ -13,6 +16,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from datetime import datetime
 
 app = FastAPI()
+
+Prediction.metadata.create_all(bind=engine)
 
 # Enable CORS
 app.add_middleware(
@@ -31,7 +36,7 @@ app.add_middleware(
 # Load model
 model = joblib.load("models/diabetes.pkl")
 
-# SHAP
+# SHAP Explainer
 explainer = shap.TreeExplainer(model)
 
 feature_names = [
@@ -45,7 +50,6 @@ feature_names = [
     "Age",
 ]
 
-# Store latest prediction
 latest_prediction = {}
 
 
@@ -113,6 +117,23 @@ def predict(data: DiabetesInput):
         "timestamp": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
     }
 
+    # Save to SQLite
+    db = SessionLocal()
+
+    new_record = Prediction(
+        prediction=latest_prediction["prediction"],
+        risk=latest_prediction["risk"],
+        confidence=latest_prediction["confidence"],
+        glucose=data.Glucose,
+        bmi=data.BMI,
+        age=data.Age,
+        timestamp=latest_prediction["timestamp"]
+    )
+
+    db.add(new_record)
+    db.commit()
+    db.close()
+
     return latest_prediction
 
 
@@ -131,7 +152,10 @@ def download_report():
     content = []
 
     content.append(
-        Paragraph("Diabetes Risk Assessment Report", styles["Title"])
+        Paragraph(
+            "Diabetes Risk Assessment Report",
+            styles["Title"]
+        )
     )
 
     content.append(Spacer(1, 20))
@@ -190,3 +214,29 @@ def download_report():
         media_type="application/pdf",
         filename="diabetes_report.pdf"
     )
+
+
+@app.get("/history")
+def get_history():
+
+    db = SessionLocal()
+
+    records = db.query(Prediction).all()
+
+    result = []
+
+    for record in records:
+        result.append({
+            "id": record.id,
+            "prediction": record.prediction,
+            "risk": record.risk,
+            "confidence": record.confidence,
+            "glucose": record.glucose,
+            "bmi": record.bmi,
+            "age": record.age,
+            "timestamp": record.timestamp
+        })
+
+    db.close()
+
+    return result
