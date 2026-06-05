@@ -520,7 +520,7 @@ function AssessmentPage() {
 
       const response = await axios.post(
 
-`https://health-risk-platform.onrender.com${endpoint}`        dataToSend
+`https://health-risk-platform.onrender.com${endpoint}`    ,    dataToSend
       );
 
       console.log("Prediction response:", response.data);
