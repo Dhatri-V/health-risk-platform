@@ -35,7 +35,9 @@ app.add_middleware(
 )
 
 # Load model
+# Load models
 model = joblib.load("models/diabetes.pkl")
+heart_model = joblib.load("models/heart_model.pkl")
 
 # SHAP Explainer
 explainer = shap.TreeExplainer(model)
@@ -64,6 +66,20 @@ class DiabetesInput(BaseModel):
     DiabetesPedigreeFunction: float
     Age: int
 
+class HeartInput(BaseModel):
+    age: int
+    sex: int
+    cp: int
+    trestbps: int
+    chol: int
+    fbs: int
+    restecg: int
+    thalach: int
+    exang: int
+    oldpeak: float
+    slope: int
+    ca: int
+    thal: int
 
 @app.get("/")
 def home():
@@ -136,6 +152,39 @@ def predict(data: DiabetesInput):
     db.close()
 
     return latest_prediction
+
+@app.post("/predict-heart")
+def predict_heart(data: HeartInput):
+
+    features = np.array([[
+        data.age,
+        data.sex,
+        data.cp,
+        data.trestbps,
+        data.chol,
+        data.fbs,
+        data.restecg,
+        data.thalach,
+        data.exang,
+        data.oldpeak,
+        data.slope,
+        data.ca,
+        data.thal
+    ]])
+
+    prediction = heart_model.predict(features)[0]
+
+    probability = heart_model.predict_proba(features)[0][1]
+
+    return {
+        "prediction": int(prediction),
+        "risk": (
+            "High Heart Disease Risk"
+            if prediction == 1
+            else "Low Heart Disease Risk"
+        ),
+        "confidence": round(probability * 100, 2)
+    }
 
 
 @app.get("/download-report")
