@@ -520,8 +520,7 @@ function AssessmentPage() {
 
       const response = await axios.post(
 
-        `http://127.0.0.1:8001${endpoint}`,
-        dataToSend
+`https://health-risk-platform.onrender.com${endpoint}`        dataToSend
       );
 
       console.log("Prediction response:", response.data);
@@ -547,8 +546,15 @@ function AssessmentPage() {
 
     if (diseaseType === "diabetes") {
       console.log("[PDF] Using backend /download-report (diabetes template)");
-      window.open("http://127.0.0.1:8001/download-report", "_blank", "noopener,noreferrer");
-      return;
+window.open(
+
+  "https://health-risk-platform.onrender.com/download-report",
+
+  "_blank",
+
+  "noopener,noreferrer"
+
+);      return;
     }
 
     // Backend currently generates only the diabetes PDF (see /download-report).
