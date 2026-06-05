@@ -43,6 +43,8 @@ function AssessmentPage() {
   const GLASS_CARD_HOVER =
     "hover:border-white/25 hover:bg-white/8 hover:-translate-y-0.5 transition-all duration-300";
   const CARD_SECTION_GAP = "mt-10";
+  const PDF_BUTTON_CLASS =
+    "inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-[0_22px_70px_-35px_rgba(34,197,94,0.55)] border border-white/10 hover:border-white/25 transition-all hover:-translate-y-0.5";
 
   // Diabetes labels
   const labels = {
@@ -327,6 +329,118 @@ function AssessmentPage() {
     return Number(weightKg) / (h * h);
   };
 
+  const getClinicalLabel = (tier) => {
+    if (tier === "low") return "Healthy";
+    if (tier === "high") return "High Risk";
+    return "Borderline";
+  };
+
+  const getClinicalPillClasses = (tier) => {
+    const styles = getTierStyles(tier);
+    return `${styles.accentBg} ${styles.accentText} border ${styles.accentBorder}`;
+  };
+
+  const getAgeGroup = (age) => {
+    const n = Number(age) || 0;
+    if (n < 30) return "Young Adult";
+    if (n < 45) return "Adult";
+    if (n < 60) return "Middle Age";
+    if (n < 75) return "Senior";
+    return "Elderly";
+  };
+
+  const getBmiCategory = (bmi) => {
+    const n = Number(bmi) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 18.5) return "Underweight";
+    if (n < 25) return "Normal";
+    if (n < 30) return "Overweight";
+    if (n < 35) return "Obese (Class I)";
+    if (n < 40) return "Obese (Class II)";
+    return "Severe Obesity (Class III)";
+  };
+
+  const getSystolicBpCategory = (systolic) => {
+    const n = Number(systolic) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 120) return "Normal";
+    if (n < 130) return "Elevated";
+    if (n < 140) return "Stage 1 Hypertension";
+    if (n < 180) return "Stage 2 Hypertension";
+    return "Hypertensive Crisis";
+  };
+
+  const getDiastolicBpCategory = (diastolic) => {
+    const n = Number(diastolic) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 80) return "Normal";
+    if (n < 90) return "Stage 1 Hypertension";
+    if (n < 120) return "Stage 2 Hypertension";
+    return "Hypertensive Crisis";
+  };
+
+  const getGlucoseStatus = (glucose) => {
+    const n = Number(glucose) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 100) return "Normal Glucose";
+    if (n < 126) return "Prediabetes Range";
+    return "High Glucose";
+  };
+
+  const getCholesterolStatus = (chol) => {
+    const n = Number(chol) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 200) return "Desirable";
+    if (n < 240) return "Borderline High";
+    return "High";
+  };
+
+  const getExerciseCapacityLabel = (maxHr) => {
+    const n = Number(maxHr) || 0;
+    if (n <= 0) return "Unknown";
+    if (n < 120) return "Below Average";
+    if (n < 150) return "Average";
+    if (n < 170) return "Above Average";
+    return "Excellent";
+  };
+
+  const getIndexColor = (score) => {
+    const n = Number(score) || 0;
+    if (n >= 75) return "text-green-300";
+    if (n >= 50) return "text-amber-300";
+    return "text-red-300";
+  };
+
+  const calcMetabolicHealthIndex = () => {
+    const glucose = Number(formData.Glucose) || 0;
+    const bmi = Number(formData.BMI) || 0;
+    const bp = Number(formData.BloodPressure) || 0; // diastolic proxy in this UI
+    const age = Number(formData.Age) || 0;
+
+    const glucosePenalty = glucose <= 0 ? 20 : glucose < 100 ? 0 : glucose < 126 ? 12 : 25;
+    const bmiPenalty = bmi <= 0 ? 15 : bmi < 25 ? 0 : bmi < 30 ? 10 : bmi < 35 ? 18 : 25;
+    const bpPenalty = bp <= 0 ? 10 : bp < 80 ? 0 : bp < 90 ? 8 : bp < 120 ? 15 : 25;
+    const agePenalty = age <= 0 ? 10 : age < 45 ? 0 : age < 60 ? 8 : age < 75 ? 15 : 22;
+
+    return clamp(100 - (glucosePenalty + bmiPenalty + bpPenalty + agePenalty), 0, 100);
+  };
+
+  const calcCardioHealthIndex = () => {
+    const age = Number(heartFormData.age) || 0;
+    const bp = Number(heartFormData.trestbps) || 0;
+    const chol = Number(heartFormData.chol) || 0;
+    const maxHr = Number(heartFormData.thalach) || 0;
+    const oldpeak = Number(heartFormData.oldpeak) || 0;
+
+    const bpPenalty = bp <= 0 ? 18 : bp < 120 ? 0 : bp < 130 ? 8 : bp < 140 ? 14 : bp < 180 ? 22 : 30;
+    const cholPenalty = chol <= 0 ? 16 : chol < 200 ? 0 : chol < 240 ? 10 : 20;
+    const hrPenalty = maxHr <= 0 ? 12 : maxHr >= 160 ? 0 : maxHr >= 140 ? 6 : maxHr >= 120 ? 12 : 20;
+    const agePenalty = age <= 0 ? 12 : age < 45 ? 0 : age < 60 ? 8 : age < 75 ? 14 : 20;
+    const oldpeakPenalty = oldpeak <= 0 ? 0 : oldpeak < 1 ? 4 : oldpeak < 2 ? 10 : oldpeak < 4 ? 18 : 25;
+
+    return clamp(100 - (bpPenalty + cholPenalty + hrPenalty + agePenalty + oldpeakPenalty), 0, 100);
+  };
+
   const setDiabetesUiField = (field, value) => {
     const nextUi = { ...diabetesUi, [field]: value };
     setDiabetesUi(nextUi);
@@ -423,8 +537,50 @@ function AssessmentPage() {
     }
   };
 
+  const handleDownloadPdfReport = () => {
+    console.log("[PDF] Download clicked", {
+      diseaseType,
+      resultRisk: result?.risk,
+      resultConfidence: result?.confidence,
+      hasTopFactors: Boolean(result?.top_factors?.length),
+    });
+
+    if (diseaseType === "diabetes") {
+      console.log("[PDF] Using backend /download-report (diabetes template)");
+      window.open("http://127.0.0.1:8001/download-report", "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    // Backend currently generates only the diabetes PDF (see /download-report).
+    // For heart disease, use browser print-to-PDF so the correct heart report is captured.
+    console.log("[PDF] Using print-to-PDF for heart disease (backend endpoint is diabetes-only)");
+    window.print();
+  };
+
+  const renderPdfDownloadButton = () => (
+    <button type="button" onClick={handleDownloadPdfReport} className={PDF_BUTTON_CLASS}>
+      <span>📄</span>
+      <span>Download PDF Report</span>
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-black to-slate-900 text-white p-10">
+      <style>{`
+        @media print {
+          body { background: #fff !important; }
+          body * { visibility: hidden !important; }
+          #print-report, #print-report * { visibility: visible !important; }
+          #print-report { position: absolute; left: 0; top: 0; width: 100%; color: #0f172a !important; }
+          #print-report * { color: #0f172a !important; }
+          #print-report .print-card {
+            border: 1px solid #e2e8f0 !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+          }
+          #print-report a, #print-report button { display: none !important; }
+        }
+      `}</style>
       <div className="fixed top-0 left-0 w-96 h-96 bg-cyan-500/20 blur-[120px] rounded-full"></div>
       <div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-500/20 blur-[120px] rounded-full"></div>
       <div className="max-w-6xl mx-auto">
@@ -871,16 +1027,34 @@ function AssessmentPage() {
         </div>
 
         {result && (
-          <div className="mt-12">
+          <div id="print-report" className="mt-12">
             {(() => {
               const tier = getRiskTier();
               const tierStyles = getTierStyles(tier);
+              const clinicalLabel = getClinicalLabel(tier);
               const factors = result.top_factors || [];
-              const factorColors = getTopFactorRankColors(factors);
-              const factorsChart = factors.map((f) => ({
+              const fallbackHeartFactors = [
+                { feature: "Age", impact: heartFormData.age / 100 },
+                { feature: "Blood Pressure", impact: heartFormData.trestbps / 200 },
+                { feature: "Cholesterol", impact: heartFormData.chol / 400 },
+                { feature: "Max Heart Rate", impact: (220 - heartFormData.thalach) / 220 },
+                { feature: "ST Depression", impact: (heartFormData.oldpeak || 0) / 6 },
+              ];
+              const activeFactors =
+                diseaseType === "heart" && (!factors || factors.length === 0)
+                  ? fallbackHeartFactors
+                  : factors;
+              const factorColors = getTopFactorRankColors(activeFactors);
+              const factorsChart = activeFactors.map((f) => ({
                 factor: f.feature,
                 impact: Number(f.impact) || 0,
               }));
+              const pieData = activeFactors.map((f) => ({
+                feature: f.feature,
+                value: Math.abs(Number(f.impact) || 0),
+              }));
+              const metabolicIndex = calcMetabolicHealthIndex();
+              const cardioIndex = calcCardioHealthIndex();
 
               return diseaseType === "diabetes" ? (
               // DIABETES REPORT
@@ -906,6 +1080,16 @@ function AssessmentPage() {
                     Diabetes Risk Score
                   </p>
 
+                  <div className="mt-4 flex items-center justify-center gap-3">
+                    <div
+                      className={`px-4 py-2 rounded-full text-xs font-black tracking-wide uppercase ${getClinicalPillClasses(
+                        tier
+                      )}`}
+                    >
+                      Clinical Status: {clinicalLabel}
+                    </div>
+                  </div>
+
                   <div className="mt-6 w-full max-w-lg mx-auto">
                     <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
                       <div
@@ -919,14 +1103,7 @@ function AssessmentPage() {
 
                   <div className="mt-8">
                     {result.top_factors && (
-                      <a
-                        href="http://127.0.0.1:8001/download-report"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block bg-white/10 hover:bg-white/15 border border-white/15 hover:border-white/30 px-8 py-4 rounded-2xl font-bold shadow-2xl transition-all hover:-translate-y-0.5"
-                      >
-                        📄 Download PDF Report
-                      </a>
+                      renderPdfDownloadButton()
                     )}
                   </div>
                 </div>
@@ -935,75 +1112,143 @@ function AssessmentPage() {
                   <div
                     className={`${GLASS_CARD} ${tierStyles.shadow} bg-gradient-to-br ${tierStyles.gradient} border ${tierStyles.accentBorder} p-8 ${GLASS_CARD_HOVER}`}
                   >
-                    <div className="text-cyan-400 text-sm font-semibold mb-2">
-                      DIABETES HEALTH SCORE
+                    <div className="text-slate-300 text-sm font-semibold mb-2">
+                      METABOLIC HEALTH INDEX
                     </div>
-                    <div className="text-7xl font-black tracking-tight text-white mb-2">
-                      {Math.round(result.confidence)}
+                    <div className={`text-7xl font-black tracking-tight mb-2 ${getIndexColor(metabolicIndex)}`}>
+                      {Math.round(metabolicIndex)}
                     </div>
-                    <div className="text-slate-400 text-lg">
-                      out of 100
+                    <div className="text-slate-400 text-sm">
+                      Composite index derived from glucose, BMI, blood pressure, and age
                     </div>
                   </div>
 
                   <div
-                    className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(168,85,247,0.70)] bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/30 p-8 ${GLASS_CARD_HOVER}`}
+                    className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(234,179,8,0.55)] bg-gradient-to-br from-amber-900/25 to-orange-900/20 border border-amber-500/25 p-8 ${GLASS_CARD_HOVER}`}
                   >
-                    <div className="text-purple-400 text-sm font-semibold mb-2">
-                      RISK ASSESSMENT
+                    <div className="text-amber-300 text-sm font-semibold mb-2">
+                      GLUCOSE STATUS
                     </div>
-                    <div
-                      className={`text-2xl font-bold ${
-                        result.prediction === 1
-                          ? "text-red-400"
-                          : "text-green-400"
-                      }`}
-                    >
-                      {result.prediction === 1 ? "High Risk" : "Low Risk"}
+                    <div className="text-3xl md:text-4xl font-black tracking-tight text-white">
+                      {getGlucoseStatus(formData.Glucose)}
                     </div>
-                    <div className="text-slate-400 text-sm mt-3">
-                      Based on your health profile and metabolic indicators
+                    <div className="mt-3 text-slate-400 text-sm">
+                      Glucose: <span className="text-slate-200 font-semibold">{formData.Glucose}</span>
                     </div>
                   </div>
 
                   <div
-                    className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(6,182,212,0.55)] bg-gradient-to-br from-slate-950/40 to-slate-900/30 border border-white/10 p-8 ${GLASS_CARD_HOVER}`}
+                    className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(59,130,246,0.55)] bg-gradient-to-br from-slate-950/40 to-slate-900/30 border border-white/10 p-8 ${GLASS_CARD_HOVER}`}
                   >
                     <div className="text-slate-300 text-sm font-semibold mb-2">
-                      PERSONAL INFORMATION
+                      KEY BIOMARKER SUMMARY
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          Age
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {formData.Age}
-                        </div>
-                      </div>
-                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
                           BMI
                         </div>
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-lg font-black text-white">
                           {formData.BMI}
                         </div>
-                      </div>
-                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          Glucose
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {formData.Glucose}
+                        <div className="text-xs text-slate-400">
+                          {getBmiCategory(formData.BMI)}
                         </div>
                       </div>
                       <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          Blood Pressure
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          BP
                         </div>
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-lg font-black text-white">
                           {formData.BloodPressure}
                         </div>
+                        <div className="text-xs text-slate-400">
+                          {getDiastolicBpCategory(formData.BloodPressure)}
+                        </div>
+                      </div>
+                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          Age
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          {formData.Age}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {getAgeGroup(formData.Age)}
+                        </div>
+                      </div>
+                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          Glucose
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          {formData.Glucose}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {getGlucoseStatus(formData.Glucose)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`${CARD_SECTION_GAP} ${GLASS_CARD} p-8 ${GLASS_CARD_HOVER}`}>
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="text-2xl md:text-3xl font-black tracking-tight text-white">
+                      Personal Information
+                    </div>
+                    <div
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getClinicalPillClasses(
+                        tier
+                      )}`}
+                    >
+                      {clinicalLabel}
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-4 gap-4">
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Age
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {formData.Age}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getAgeGroup(formData.Age)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        BMI
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {formData.BMI}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getBmiCategory(formData.BMI)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Glucose
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {formData.Glucose}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getGlucoseStatus(formData.Glucose)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Blood Pressure
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {formData.BloodPressure}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getDiastolicBpCategory(formData.BloodPressure)}
                       </div>
                     </div>
                   </div>
@@ -1345,6 +1590,16 @@ function AssessmentPage() {
                     Cardiovascular Risk Score
                   </p>
 
+                  <div className="mt-4 flex items-center justify-center gap-3">
+                    <div
+                      className={`px-4 py-2 rounded-full text-xs font-black tracking-wide uppercase ${getClinicalPillClasses(
+                        tier
+                      )}`}
+                    >
+                      Clinical Status: {clinicalLabel}
+                    </div>
+                  </div>
+
                   <div className="mt-6 w-full max-w-lg mx-auto">
                     <div className="h-4 bg-slate-700 rounded-full overflow-hidden">
                       <div
@@ -1355,73 +1610,147 @@ function AssessmentPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="mt-8">
+                    {renderPdfDownloadButton()}
+                  </div>
                 </div>
 
                 <div className={`${CARD_SECTION_GAP} grid md:grid-cols-3 gap-6`}>
-                  <div className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(6,182,212,0.55)] bg-gradient-to-br from-blue-900/30 to-cyan-900/30 border border-cyan-500/30 p-8 ${GLASS_CARD_HOVER}`}>
-                    <div className="text-cyan-400 text-sm font-semibold mb-2">
-                      HEART HEALTH SCORE
+                  <div className={`${GLASS_CARD} ${tierStyles.shadow} bg-gradient-to-br ${tierStyles.gradient} border ${tierStyles.accentBorder} p-8 ${GLASS_CARD_HOVER}`}>
+                    <div className="text-slate-300 text-sm font-semibold mb-2">
+                      CARDIOVASCULAR HEALTH INDEX
                     </div>
-                    <div className="text-7xl font-black tracking-tight text-white mb-2">
-                      {Math.round(result.confidence)}
+                    <div className={`text-7xl font-black tracking-tight mb-2 ${getIndexColor(cardioIndex)}`}>
+                      {Math.round(cardioIndex)}
                     </div>
-                    <div className="text-slate-400 text-lg">
-                      out of 100
+                    <div className="text-slate-400 text-sm">
+                      Composite index derived from BP, cholesterol, exercise capacity, age, and ST depression
                     </div>
                   </div>
 
-                  <div className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(168,85,247,0.70)] bg-gradient-to-br from-purple-900/30 to-pink-900/30 border border-purple-500/30 p-8 ${GLASS_CARD_HOVER}`}>
-                    <div className="text-purple-400 text-sm font-semibold mb-2">
-                      RISK ASSESSMENT
+                  <div className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(234,179,8,0.55)] bg-gradient-to-br from-amber-900/25 to-orange-900/20 border border-amber-500/25 p-8 ${GLASS_CARD_HOVER}`}>
+                    <div className="text-amber-300 text-sm font-semibold mb-2">
+                      BLOOD PRESSURE CLASSIFICATION
                     </div>
-                    <div className={`text-2xl font-bold ${
-                      result.prediction === 1
-                        ? "text-red-400"
-                        : "text-green-400"
-                    }`}>
-                      {result.prediction === 1 ? "High Risk" : "Low Risk"}
+                    <div className="text-3xl md:text-4xl font-black tracking-tight text-white">
+                      {getSystolicBpCategory(heartFormData.trestbps)}
                     </div>
-                    <div className="text-slate-400 text-sm mt-3">
-                      Based on your health profile and cardiovascular indicators
+                    <div className="mt-3 text-slate-400 text-sm">
+                      BP: <span className="text-slate-200 font-semibold">{heartFormData.trestbps}</span>
                     </div>
                   </div>
 
                   <div className={`${GLASS_CARD} shadow-[0_28px_90px_-45px_rgba(59,130,246,0.55)] bg-gradient-to-br from-slate-950/40 to-slate-900/30 border border-white/10 p-8 ${GLASS_CARD_HOVER}`}>
                     <div className="text-slate-300 text-sm font-semibold mb-2">
-                      PERSONAL INFORMATION
+                      EXERCISE CAPACITY SUMMARY
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          Age
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {heartFormData.age}
-                        </div>
-                      </div>
-                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          Cholesterol
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {heartFormData.chol}
-                        </div>
-                      </div>
-                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
-                          BP
-                        </div>
-                        <div className="text-2xl font-bold text-white">
-                          {heartFormData.trestbps}
-                        </div>
-                      </div>
-                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
-                        <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
                           Max HR
                         </div>
-                        <div className="text-2xl font-bold text-white">
+                        <div className="text-lg font-black text-white">
                           {heartFormData.thalach}
                         </div>
+                        <div className="text-xs text-slate-400">
+                          {getExerciseCapacityLabel(heartFormData.thalach)}
+                        </div>
+                      </div>
+                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          Cholesterol
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          {heartFormData.chol}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {getCholesterolStatus(heartFormData.chol)}
+                        </div>
+                      </div>
+                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          Age
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          {heartFormData.age}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {getAgeGroup(heartFormData.age)}
+                        </div>
+                      </div>
+                      <div className="bg-white/6 border border-white/10 rounded-2xl p-4">
+                        <div className="text-slate-400 text-[11px] uppercase tracking-wider">
+                          BP
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          {heartFormData.trestbps}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {getSystolicBpCategory(heartFormData.trestbps)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`${CARD_SECTION_GAP} ${GLASS_CARD} p-8 ${GLASS_CARD_HOVER}`}>
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="text-2xl md:text-3xl font-black tracking-tight text-white">
+                      Personal Information
+                    </div>
+                    <div
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getClinicalPillClasses(
+                        tier
+                      )}`}
+                    >
+                      {clinicalLabel}
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-4 gap-4">
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Age
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {heartFormData.age}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getAgeGroup(heartFormData.age)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Blood Pressure
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {heartFormData.trestbps}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getSystolicBpCategory(heartFormData.trestbps)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Cholesterol
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {heartFormData.chol}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getCholesterolStatus(heartFormData.chol)}
+                      </div>
+                    </div>
+                    <div className="bg-white/6 border border-white/10 rounded-2xl p-5">
+                      <div className="text-slate-400 text-xs uppercase tracking-wider">
+                        Max Heart Rate
+                      </div>
+                      <div className="text-2xl font-black text-white">
+                        {heartFormData.thalach}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {getExerciseCapacityLabel(heartFormData.thalach)}
                       </div>
                     </div>
                   </div>
@@ -1613,16 +1942,15 @@ function AssessmentPage() {
                   )}
                 </div>
 
-                {result.top_factors && (
-                  <div className={`${CARD_SECTION_GAP} ${GLASS_CARD} p-8 ${GLASS_CARD_HOVER}`}>
-                    <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-2">
-                      Cardiovascular Risk Analysis
-                    </h2>
-                    <p className="text-center text-slate-400 mb-8">
-                      Factor contributions based on your responses
-                    </p>
+                <div className={`${CARD_SECTION_GAP} ${GLASS_CARD} p-8 ${GLASS_CARD_HOVER}`}>
+                  <h2 className="text-3xl md:text-4xl font-black tracking-tight text-center mb-2">
+                    Cardiovascular Risk Analysis
+                  </h2>
+                  <p className="text-center text-slate-400 mb-8">
+                    Top contributing factors based on your responses
+                  </p>
 
-                    <div className="bg-slate-950/40 border border-white/10 rounded-3xl p-4 md:p-6">
+                  <div className="bg-slate-950/40 border border-white/10 rounded-3xl p-4 md:p-6">
                     <div style={{ width: "100%", height: 360 }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart
@@ -1685,9 +2013,63 @@ function AssessmentPage() {
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
+                  </div>
+
+                  <div className="mt-8 grid md:grid-cols-2 gap-6">
+                    <div className="bg-slate-950/40 border border-white/10 rounded-3xl p-6">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="text-slate-200 font-bold">
+                          Risk Factor Distribution
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          Percent contribution (relative)
+                        </div>
+                      </div>
+
+                      <div style={{ width: "100%", height: 320 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Legend />
+                            <Pie
+                              data={pieData}
+                              dataKey="value"
+                              nameKey="feature"
+                              outerRadius={120}
+                              labelLine={false}
+                              label={({ name, percent }) =>
+                                `${name} ${(percent * 100).toFixed(0)}%`
+                              }
+                              isAnimationActive
+                              animationDuration={850}
+                            >
+                              {(pieData || []).map((entry, index) => (
+                                <Cell
+                                  key={index}
+                                  fill={
+                                    factorColors[entry.feature] ??
+                                    COLORS[index % COLORS.length]
+                                  }
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/40 border border-white/10 rounded-3xl p-6">
+                      <div className="text-slate-200 font-bold mb-2">
+                        Notes
+                      </div>
+                      <div className="text-slate-400 text-sm leading-relaxed">
+                        If factor data is provided by the backend, charts reflect
+                        the model’s explanation output. Otherwise, they fall
+                        back to a normalized view of your submitted metrics.
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
               </>
             );
             })()}
