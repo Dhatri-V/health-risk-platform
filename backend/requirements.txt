@@ -36,7 +36,6 @@ reportlab==4.5.1
 scikit-learn==1.6.1
 scipy==1.13.1
 shap==0.49.1
-six @ file:///AppleInternal/Library/BuildRoots/4~CMzOugA1hT-4O2kZ5M4Og1VxAfLgir31_besAu0/Library/Caches/com.apple.xbs/Sources/python3/six-1.15.0-py2.py3-none-any.whl
 slicer==0.0.8
 SQLAlchemy==2.0.50
 starlette==0.49.3
